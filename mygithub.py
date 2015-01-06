@@ -13,7 +13,7 @@ def create_connection():
 |  ¹ÝÈ¯: github.MainClass.Github
 |  g.rate_limiting
     '''
-    g = Github(token)
+    g = Github(token,timeout=300)
     return g
 def refresh_rate_limit(git):
     git.get_rate_limit()
@@ -87,8 +87,6 @@ def get_stat_contributors_by_rep(repository):
                     amount_change = week.c
                     output.extend([week_str,amount_add,amount_delete,amount_change])
                     rv_contributions.append(output)
-                    stdout.write("W")
-                    stdout.flush()
         stdout.write("\n")
         stdout.flush()
     except GithubException,e:
@@ -123,16 +121,12 @@ def get_info_issues(repository):
                 eevent = event.event
                 eid = event.id
                 rv_events.append([iid,eid,ecreated_at,eby,eevent])
-                stdout.write("E")
-                stdout.flush()
             for comment in issue.get_comments():
                 #cbody = comment.body
                 cid = comment.id
                 cuser = comment.user.id
                 ccreated_at = str(comment.created_at)
                 rv_comments.append([iid,cid,ccreated_at,cid])
-                stdout.write("C")
-                stdout.flush()
         stdout.write("\n")
         stdout.flush()
     except GithubException,e:
