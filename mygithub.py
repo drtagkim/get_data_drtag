@@ -173,6 +173,7 @@ def export_issue_event(issue_event,filename):
     f = open(filename,'wb')
     w = unicodecsv.writer(f,encoding='utf-8')
     w.writerow(['issue_id','event_id','event_created_at','event_by','event_verb'])
+    w.writerows(issue_event)
     f.close()
 def main():
     mygit = create_connection()
