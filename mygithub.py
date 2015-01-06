@@ -3,6 +3,7 @@
 # Author: Taekyung Kim
 from github import GithubException
 from github import Github
+from sys import stdout
 token = "e9c9c32be88a969c83ebf1aa3a28ea340c72ca57"
 
 
@@ -54,8 +55,12 @@ def get_contributors(repository):
     rv_contributors = []
     try:
         for contributor in repository.get_contributors():
+            stdout.write("U")
+            stdout.flush()
             user = analyze_user(contributor)
             rv_contributors.append(user)
+        stdout.write("\n")
+        stdout.flush()
     except GithubException,e:
         print e
     except TypeError:
@@ -71,6 +76,8 @@ def get_stat_contributors_by_rep(repository):
         for contribution in repository.get_stats_contributors():
             author = analyze_user(contribution.author) #dict
             user_id = contribution.author.id
+            stdout.write("C")
+            stdout.flush()
             if contribution.weeks != None:
                 for week in contribution.weeks:
                     output = [user_id,]
@@ -80,6 +87,10 @@ def get_stat_contributors_by_rep(repository):
                     amount_change = week.c
                     output.extend([week_str,amount_add,amount_delete,amount_change])
                     rv_contributions.append(output)
+                    stdout.write("W")
+                    stdout.flush()
+        stdout.write("\n")
+        stdout.flush()
     except GithubException,e:
         print e
     except TypeError:
@@ -104,18 +115,26 @@ def get_info_issues(repository):
             except:
                 iclosed_by = -1
             rv_issues.append([iid,inumber,iuser_id,ititle,icreated_at,iclosed_at,iclosed_by])
+            stdout.write("I")
+            stdout.flush()
             for event in issue.get_events():
                 eby = event.actor.id
                 ecreated_at = str(event.created_at)
                 eevent = event.event
                 eid = event.id
                 rv_events.append([iid,eid,ecreated_at,eby,eevent])
+                stdout.write("E")
+                stdout.flush()
             for comment in issue.get_comments():
                 #cbody = comment.body
                 cid = comment.id
                 cuser = comment.user.id
                 ccreated_at = str(comment.created_at)
                 rv_comments.append([iid,cid,ccreated_at,cid])
+                stdout.write("C")
+                stdout.flush()
+        stdout.write("\n")
+        stdout.flush()
     except GithubException,e:
         print e
     except TypeError:
