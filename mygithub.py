@@ -245,7 +245,7 @@ def main():
     print "======================="
     rep_name = raw_input("Type repository full name >>>")
     rep = get_repository_by_name(mygit,rep_name)
-    tag = rep.replace("/","__")
+    tag = rep.full_name.replace("/","__")
     fname_contributors = "%s_contributor_list.csv"%(tag,)
     fname_contributions = "%s_contribution.csv"%(tag,)
     fname_issue_info = "%s_issue_info.tsv"%(tag,)
