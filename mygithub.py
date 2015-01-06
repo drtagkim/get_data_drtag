@@ -1,13 +1,20 @@
 # -*- coding:utf-8 -*-
+# ##################################################################
 # PyGithub frontend
 # Author: Taekyung Kim
+# Requirement:
+#    pip install pygithub
+#    pip install unicodecsv
+# ##################################################################
 from github import GithubException
 from github import Github
 from sys import stdout
-token = "e9c9c32be88a969c83ebf1aa3a28ea340c72ca57"
+import sys
+# token = "e9c9c32be88a969c83ebf1aa3a28ea340c72ca57"
+# Read: https://help.github.com/articles/creating-an-access-token-for-command-line-use/
 progress_mark = "LOVE"
 
-def create_connection():
+def create_connection(token):
     '''
 |  Github 연결
 |  반환: github.MainClass.Github
@@ -211,7 +218,24 @@ def export_code_frequency(code_frequency,filename):
     w.writerows(code_frequency)
     f.close()
 def main():
-    mygit = create_connection()
+    try:
+        token_file = sys.argv[1]
+    except:
+        print "$ python mygithub.py your_token.txt"
+        sys.exit(0)
+    assert type(token_file) == str,"Token filename should be string."
+    my_token = ''
+    try:
+        f = open(token_file)
+        my_token = f.readline()
+        f.close()
+    except IOError:
+        print "Your token file has a problem."
+        sys.exit(0)
+    if len(my_token) <=0:
+        print "Your toke file has a problem"
+        sys.exit(0)
+    mygit = create_connection(my_token)
     print "======================="
     refresh_rate_limit(mygit)
     print "YOUR RATE LIMIT:"
