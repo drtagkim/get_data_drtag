@@ -9,7 +9,9 @@
 from github import GithubException
 from github import Github
 from sys import stdout
+import unicodecsv
 import sys
+import time
 # token = "e9c9c32be88a969c83ebf1aa3a28ea340c72ca57"
 # Read: https://help.github.com/articles/creating-an-access-token-for-command-line-use/
 progress_mark = "LOVE"
@@ -156,17 +158,23 @@ def get_info_issues(repository):
             stdout.write("\r%s"%progress_mark[cnt % 4])
             stdout.flush()
             for event in issue.get_events():
-                eby = event.actor.id
-                ecreated_at = str(event.created_at)
-                eevent = event.event
-                eid = event.id
-                rv_events.append([rep_id,iid,eid,ecreated_at,eby,eevent])
+                try:
+                    eby = event.actor.id
+                    ecreated_at = str(event.created_at)
+                    eevent = event.event
+                    eid = event.id
+                    rv_events.append([rep_id,iid,eid,ecreated_at,eby,eevent])
+                except:
+                    pass
             for comment in issue.get_comments():
                 #cbody = comment.body
-                cid = comment.id
-                cuser = comment.user.id
-                ccreated_at = str(comment.created_at)
-                rv_comments.append([rep_id,iid,cid,ccreated_at,cid])
+                try:
+                    cid = comment.id
+                    cuser = comment.user.id
+                    ccreated_at = str(comment.created_at)
+                    rv_comments.append([rep_id,iid,cid,ccreated_at,cid])
+                except:
+                    pass
         stdout.write("\r...Complete")
         stdout.write("\n")
         stdout.flush()
@@ -176,65 +184,42 @@ def get_info_issues(repository):
         pass
     return rv_issues,rv_events,rv_comments
 def export_stat_contributions(contribution_data,filename):
-    import unicodecsv
     f = open(filename,'wb')
     w = unicodecsv.writer(f,encoding='utf-8')
     w.writerow(['repository_id','user_id','weekid','nadd','ndelete','nchange'])
     w.writerows(contribution_data)
     f.close()
 def export_contributors(contributor_data,filename):
-    import unicodecsv
     f = open(filename,'wb')
     w = unicodecsv.writer(f,encoding='utf-8')
     w.writerow(['repository_id','repository_fullname','contributor_id','contributor_name','contributor_email','contributor_created_at','contributor_nfollowers','contributor_nfollowing'])
     w.writerows(contributor_data)
     f.close()        
 def export_issue_info(issue_info,filename):
-    import unicodecsv
     f = open(filename,'wb')
     w = unicodecsv.writer(f,encoding='utf-8',delimiter='\t')
     w.writerow(['repository_id','issue_id','issue_number','issue_by','issue_title','issue_created_at','issue_closed_at','issue_closed_by'])
     w.writerows(issue_info)
     f.close()
 def export_issue_comment(issue_comment,filename):
-    import unicodecsv
     f = open(filename,'wb')
     w = unicodecsv.writer(f,encoding='utf-8',delimiter='\t')
     w.writerow(['repository_id','issue_id','comment_created_at','comment_by'])
     w.writerows(issue_comment)
     f.close()
 def export_issue_event(issue_event,filename):
-    import unicodecsv
     f = open(filename,'wb')
     w = unicodecsv.writer(f,encoding='utf-8')
     w.writerow(['repository_id','issue_id','event_id','event_created_at','event_by','event_verb'])
     w.writerows(issue_event)
     f.close()
 def export_code_frequency(code_frequency,filename):
-    import unicodecsv
     f = open(filename,'wb')
     w = unicodecsv.writer(f,encoding='utf-8')
     w.writerow(['repository_id','weekstr','nadd','ndelete'])
     w.writerows(code_frequency)
     f.close()
-def main():
-    try:
-        token_file = sys.argv[1]
-    except:
-        print "$ python mygithub.py your_token.txt"
-        sys.exit(0)
-    assert type(token_file) == str,"Token filename should be string."
-    my_token = ''
-    try:
-        f = open(token_file)
-        my_token = f.readline()
-        f.close()
-    except IOError:
-        print "Your token file has a problem."
-        sys.exit(0)
-    if len(my_token) <=0:
-        print "Your toke file has a problem"
-        sys.exit(0)
+def main(my_token):
     mygit = create_connection(my_token)
     print "======================="
     refresh_rate_limit(mygit)
@@ -274,5 +259,94 @@ def main():
     print "RESET AT:"
     print_rate_limit_reset_time(mygit)
     print "======================="
+def save_repos_data(data,fname):
+    rv = []
+    for d in data:
+        rv.append([d.id,d.full_name,d.html_url])
+    f = open(fname,'wb')
+    w = unicodecsv.writer(f,encoding='utf-8')
+    w.writerow(['repository_id','repository_fullname','repository_url'])
+    w.writerows(rv)
+    f.close()
+def acquire_all_repos(my_token,dir_name,page_start=None,page_end=None):
+    mygit = create_connection(my_token)
+    all_repos = mygit.get_repos()
+    if page_start == None:
+        page_cnt = 0
+    else:
+        page_cnt = page_start
+    if page_end == None:
+        page_end = -1
+    rt = mygit.rate_limiting_resettime
+    while 1:
+        stdout.write("%d"%(page_cnt))
+        stdout.flush()
+        repo = all_repos.get_page(page_cnt)
+        if len(repo) == 0:
+            break
+        fname = "%s/%010d_git_repo.csv"%(dir_name,page_cnt,)
+        stdout.write(",")
+        stdout.flush()
+        save_repos_data(repo,fname)
+        stdout.write(".")
+        stdout.flush()
+        if page_end >= 0 and page_end == page_cnt:
+            break
+        page_cnt += 1
+        if mygit.rate_limiting[0] <= 10:
+            diff = rt - time.time() + 10
+            stdout.write("#")
+            stdout.flush()
+            time.sleep(diff)
+            a = mygit.get_rate_limit()
+            rt = mygit.rate_limiting_resettime
+        else:
+            diff = rt - time.time()
+            if diff <= 0:
+                a = mygit.get_rate_limit()
+                rt = mygit.rate_limiting_resettime
 if __name__ == "__main__":
-    main()
+    '''
+|  전체 리스트를 다 받는다면
+|  $ python mygithub.py 2 your_token.txt output_dir
+|  만약 중간에서 다시 시작해야 하면 (e.g., 12 page)
+|  $ python mygithub.py 2 your_token.txt output_dir 12
+|  끝나는 페이지를 정한다면 (e.g., 12~20까지)
+|  $ python mygithub.py 2 your_token.txt output_dir 12 20
+|  특정한 repository의 full_name입력해서 데이터 추출하려면
+|  $ python mygithub.py 1 your_token.txt
+    '''
+    try:
+        choice = sys.argv[1]
+        token_file = sys.argv[2]
+    except:
+        print "$ python 1 mygithub.py 1 your_token.txt"
+        print "$ python 2 mygithub.py 2 your_token.txt"
+        sys.exit(0)
+    assert type(token_file) == str,"Token filename should be string."
+    my_token = ''
+    try:
+        f = open(token_file)
+        my_token = f.readline()
+        f.close()
+    except IOError:
+        print "Your token file has a problem."
+        sys.exit(0)
+    if len(my_token) <=0:
+        print "Your toke file has a problem"
+        sys.exit(0)
+    # EXECUTION
+    if choice == '1':
+        main(my_token)
+    else:
+        dir_name = sys.argv[3]
+        if len(sys.argv) == 5:
+            page_start = int(sys.argv[4])
+        elif len(sys.argv) == 6:
+            page_start = int(sys.argv[4])
+            page_end = int(sys.argv[5])
+        else:
+            page_start = None
+            page_end = None
+        acquire_all_repos(my_token,dir_name,page_start=page_start,page_end=page_end)
+# === END OF PROGRAM ===
