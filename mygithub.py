@@ -345,22 +345,12 @@ def acquire_all_repos(my_token,dir_name):
         stdout.flush()
     print "DONE"
 if __name__ == "__main__":
-    '''
-|  전체 리스트를 다 받는다면
-|  $ python mygithub.py 2 your_token.txt output_dir
-|  만약 중간에서 다시 시작해야 하면 (e.g., 12 page)
-|  $ python mygithub.py 2 your_token.txt output_dir 12
-|  끝나는 페이지를 정한다면 (e.g., 12~20까지)
-|  $ python mygithub.py 2 your_token.txt output_dir 12 20
-|  특정한 repository의 full_name입력해서 데이터 추출하려면
-|  $ python mygithub.py 1 your_token.txt
-    '''
     try:
         choice = sys.argv[1]
         token_file = sys.argv[2]
     except:
-        print "$ python 1 mygithub.py 1 your_token.txt"
-        print "$ python 2 mygithub.py 2 your_token.txt"
+        print "$ python mygithub.py 1 your_token.txt"
+        print "$ python mygithub.py 2 your_token.txt all_repo"
         sys.exit(0)
     assert type(token_file) == str,"Token filename should be string."
     my_token = ''
