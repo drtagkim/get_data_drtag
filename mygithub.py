@@ -15,14 +15,13 @@ import time
 # token = "e9c9c32be88a969c83ebf1aa3a28ea340c72ca57"
 # Read: https://help.github.com/articles/creating-an-access-token-for-command-line-use/
 progress_mark = "LOVE"
-
 def create_connection(token):
     '''
 |  Github 연결
 |  반환: github.MainClass.Github
 |  g.rate_limiting
     '''
-    g = Github(token,timeout=300)
+    g = Github(token,timeout=3000)
     return g
 def get_repository_id(repository):
     return repository.id,repository.full_name.replace("/","__")
@@ -69,13 +68,14 @@ def get_contributors(repository):
     try:
         for contributor in repository.get_contributors():
             output = [rep_id,rep_fn]
-            stdout.write("\r%s"%progress_mark[cnt % 4])
-            stdout.flush()
             cnt += 1
             user = analyze_user(contributor)
+            stdout.write('.')
+            stdout.flush()
+            time.sleep(politeness*0.5)
             output.extend(user)
             rv_contributors.append(output)
-        stdout.write("\r...Complete")
+        stdout.write("...Complete")
         stdout.write("\n")
         stdout.flush()
     except GithubException,e:
@@ -91,11 +91,9 @@ def get_stat_contributors_by_rep(repository):
     rv_contributions = []
     try:
         cnt = 0
+        tick = 0
         for contribution in repository.get_stats_contributors():
-            author = analyze_user(contribution.author) #dict
             user_id = contribution.author.id
-            stdout.write("\r%s"%progress_mark[cnt % 4])
-            stdout.flush()
             cnt += 1
             if contribution.weeks != None:
                 for week in contribution.weeks:
@@ -106,7 +104,14 @@ def get_stat_contributors_by_rep(repository):
                     amount_change = week.c
                     output.extend([week_str,amount_add,amount_delete,amount_change])
                     rv_contributions.append(output)
-        stdout.write("\r...Complete")
+            tick += 1
+            stdout.write(",")
+            stdout.flush()
+            if tick % 100 == 0:
+                stdout.write(".")
+                stdout.flush()
+                time.sleep(politeness)
+        stdout.write("...Complete")
         stdout.write("\n")
         stdout.flush()
     except GithubException,e:
@@ -119,14 +124,20 @@ def get_stat_code_frequency(repository):
     rep_id, rep_fn = get_repository_id(repository)
     try:
         cnt = 0
+        tick = 0
         for cf in repository.get_stats_code_frequency():
             week = str(cf.week).split(" ")[0]
             nadd = cf.additions
             ndelete = cf.deletions
             rv_cf.append([rep_id,week,nadd,ndelete])
-            stdout.write("\r%s"%progress_mark[cnt % 4])
             stdout.flush()
-        stdout.write("\r...Complete")
+            tick += 1
+            stdout.write(",")
+            stdout.flush()
+            if tick % 100 == 0:
+                stdout.write(".")
+                time.sleep(politeness)
+        stdout.write("...Complete")
         stdout.write("\n")
         stdout.flush()
     except GithubException,e:
@@ -141,6 +152,7 @@ def get_info_issues(repository):
     rv_comments = []
     try:
         cnt = 0
+        tick = 0
         for issue in repository.get_issues():
             iuser = issue.user
             iid = issue.id
@@ -155,9 +167,15 @@ def get_info_issues(repository):
             except:
                 iclosed_by = -1
             rv_issues.append([rep_id,iid,inumber,iuser_id,ititle,icreated_at,iclosed_at,iclosed_by])
-            stdout.write("\r%s"%progress_mark[cnt % 4])
+            tick += 1
+            stdout.write(",")
             stdout.flush()
+            if tick % 100 == 0:
+                stdout.write(".")
+                stdout.flush()
+                time.sleep(politeness)
             for event in issue.get_events():
+                tick += 1
                 try:
                     eby = event.actor.id
                     ecreated_at = str(event.created_at)
@@ -166,8 +184,13 @@ def get_info_issues(repository):
                     rv_events.append([rep_id,iid,eid,ecreated_at,eby,eevent])
                 except:
                     pass
+                if tick % 100 == 0:
+                    stdout.write(".")
+                    stdout.flush()
+                    time.sleep(politeness)
             for comment in issue.get_comments():
                 #cbody = comment.body
+                tick += 1
                 try:
                     cid = comment.id
                     cuser = comment.user.id
@@ -175,7 +198,11 @@ def get_info_issues(repository):
                     rv_comments.append([rep_id,iid,cid,ccreated_at,cid])
                 except:
                     pass
-        stdout.write("\r...Complete")
+                if tick % 100 == 0:
+                    stdout.write(".")
+                    stdout.flush()
+                    time.sleep(politeness)
+        stdout.write("...Complete")
         stdout.write("\n")
         stdout.flush()
     except GithubException,e:
@@ -276,31 +303,28 @@ def save_repos_data(data,fname):
     w.writerow(['repository_id','repository_fullname','repository_url'])
     w.writerows(rv)
     f.close()
-def acquire_all_repos(my_token,dir_name,page_start=None,page_end=None):
+def acquire_all_repos(my_token,dir_name):
     mygit = create_connection(my_token)
     all_repos = mygit.get_repos()
-    if page_start == None:
-        page_cnt = 0
-    else:
-        page_cnt = page_start
-    if page_end == None:
-        page_end = -1
     rt = mygit.rate_limiting_resettime
-    while 1:
-        stdout.write("%d"%(page_cnt))
-        stdout.flush()
-        repo = all_repos.get_page(page_cnt)
-        if len(repo) == 0:
-            break
-        fname = "%s/%010d_git_repo.csv"%(dir_name,page_cnt,)
-        stdout.write(",")
-        stdout.flush()
-        save_repos_data(repo,fname)
-        stdout.write(".")
-        stdout.flush()
-        if page_end >= 0 and page_end == page_cnt:
-            break
-        page_cnt += 1
+    output = []
+    item_count = 0
+    page_cnt = 0
+    for repo in mygit.get_repos():
+        output.append(repo)
+        item_count += 1
+        if (item_count % 100) == 0:
+            page_cnt +=1
+            stdout.write("%d,"%(page_cnt))
+            stdout.flush()
+            time.sleep(5) # 5 seconds for politeness...
+        if item_count >= 5000:
+            fname = "%s/%010d_git_repo.csv"%(dir_name,page_cnt,)
+            save_repos_data(output,fname)
+            stdout.write(".....writing.....")
+            stdout.flush()
+            output = []
+            item_count = 0
         if mygit.rate_limiting[0] <= 10:
             diff = rt - time.time() + 10
             stdout.write("#")
@@ -313,6 +337,13 @@ def acquire_all_repos(my_token,dir_name,page_start=None,page_end=None):
             if diff <= 0:
                 a = mygit.get_rate_limit()
                 rt = mygit.rate_limiting_resettime
+    if len(output) > 0:
+        page_cnt += 1
+        fname = "%s/%010d_git_repo.csv"%(dir_name,page_cnt,)
+        save_repos_data(output,fname)
+        stdout.write(".....writing.....")
+        stdout.flush()
+    print "DONE"
 if __name__ == "__main__":
     '''
 |  전체 리스트를 다 받는다면
@@ -346,26 +377,7 @@ if __name__ == "__main__":
     # EXECUTION
     if choice == '1':
         main(my_token)
-    elif choice == '2':
+    else:
         dir_name = sys.argv[3]
-        if len(sys.argv) == 5:
-            page_start = int(sys.argv[4])
-        elif len(sys.argv) == 6:
-            page_start = int(sys.argv[4])
-            page_end = int(sys.argv[5])
-        else:
-            page_start = None
-            page_end = None
-        acquire_all_repos(my_token,dir_name,page_start=page_start,page_end=page_end)
-    elif choice == '3':
-        full_name_fname = sys.argv[3]
-        output_dir = sys.argv[4]
-        f = open(full_name_fname)
-        reader = unicodecsv.reader(f,encoding='utf-8')
-        full_names = []
-        for r in reader:
-            full_names.append(r[0])
-        f.close()
-        for fn in full_names:
-            main(my_token,fn,output_dir)
+        acquire_all_repos(my_token,dir_name)
 # === END OF PROGRAM ===
