@@ -219,7 +219,7 @@ def export_code_frequency(code_frequency,filename):
     w.writerow(['repository_id','weekstr','nadd','ndelete'])
     w.writerows(code_frequency)
     f.close()
-def main(my_token,full_name=None):
+def main(my_token,full_name=None,output_dir=""):
     mygit = create_connection(my_token)
     print "======================="
     refresh_rate_limit(mygit)
@@ -234,12 +234,12 @@ def main(my_token,full_name=None):
         rep_name = full_name
     rep = get_repository_by_name(mygit,rep_name)
     tag = rep.full_name.replace("/","__")
-    fname_contributors = "%s_contributor_list.csv"%(tag,)
-    fname_contributions = "%s_contribution.csv"%(tag,)
-    fname_issue_info = "%s_issue_info.tsv"%(tag,)
-    fname_issue_event = "%s_issue_event.csv"%(tag,)
-    fname_issue_comment = "%s_issue_comment.tsv"%(tag,)
-    fname_code_frequency = "%s_code_frequency.csv"%(tag,)
+    fname_contributors = "%s%s_contributor_list.csv"%(output_dir,tag,)
+    fname_contributions = "%s%s_contribution.csv"%(output_dir,tag,)
+    fname_issue_info = "%s%s_issue_info.tsv"%(output_dir,tag,)
+    fname_issue_event = "%s%s_issue_event.csv"%(output_dir,tag,)
+    fname_issue_comment = "%s%s_issue_comment.tsv"%(output_dir,tag,)
+    fname_code_frequency = "%s%s_code_frequency.csv"%(output_dir,tag,)
     print "[STEP 1] Getting the list of contributors"
     contributors = get_contributors(rep)
     print "[STEP 2] Getting contributions"
@@ -359,6 +359,7 @@ if __name__ == "__main__":
         acquire_all_repos(my_token,dir_name,page_start=page_start,page_end=page_end)
     elif choice == '3':
         full_name_fname = sys.argv[3]
+        output_dir = sys.argv[4]
         f = open(full_name_fname)
         reader = unicodecsv.reader(f,encoding='utf-8')
         full_names = []
@@ -366,5 +367,5 @@ if __name__ == "__main__":
             full_names.append(r[0])
         f.close()
         for fn in full_names:
-            main(my_token,fn)
+            main(my_token,fn,output_dir)
 # === END OF PROGRAM ===
