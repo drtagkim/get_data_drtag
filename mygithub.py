@@ -219,7 +219,7 @@ def export_code_frequency(code_frequency,filename):
     w.writerow(['repository_id','weekstr','nadd','ndelete'])
     w.writerows(code_frequency)
     f.close()
-def main(my_token):
+def main(my_token,full_name=None):
     mygit = create_connection(my_token)
     print "======================="
     refresh_rate_limit(mygit)
@@ -228,7 +228,10 @@ def main(my_token):
     print "RESET AT:"
     print_rate_limit_reset_time(mygit)
     print "======================="
-    rep_name = raw_input("Type repository full name >>>")
+    if full_name == None:
+        rep_name = raw_input("Type repository full name >>>")
+    else:
+        rep_name = full_name
     rep = get_repository_by_name(mygit,rep_name)
     tag = rep.full_name.replace("/","__")
     fname_contributors = "%s_contributor_list.csv"%(tag,)
@@ -259,6 +262,11 @@ def main(my_token):
     print "RESET AT:"
     print_rate_limit_reset_time(mygit)
     print "======================="
+    if mygit.rate_limiting[0] <= 500:
+        waiting_time = mygit.rate_limiting_resettime - time.time()
+        print "Waiting for %f seconds for reset" % waiting_time
+        time.sleep(waiting_time)
+        
 def save_repos_data(data,fname):
     rv = []
     for d in data:
@@ -338,7 +346,7 @@ if __name__ == "__main__":
     # EXECUTION
     if choice == '1':
         main(my_token)
-    else:
+    elif choice == '2':
         dir_name = sys.argv[3]
         if len(sys.argv) == 5:
             page_start = int(sys.argv[4])
@@ -349,4 +357,14 @@ if __name__ == "__main__":
             page_start = None
             page_end = None
         acquire_all_repos(my_token,dir_name,page_start=page_start,page_end=page_end)
+    elif choice == '3':
+        full_name_fname = sys.argv[3]
+        f = open(full_name_fname)
+        reader = unicodecsv.reader(f,encoding='utf-8')
+        full_names = []
+        for r in reader:
+            full_names.append(r[0])
+        f.close()
+        for fn in full_names:
+            main(my_token,fn)
 # === END OF PROGRAM ===
