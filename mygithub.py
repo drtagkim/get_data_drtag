@@ -14,7 +14,7 @@ import sys
 import time
 # token = "e9c9c32be88a969c83ebf1aa3a28ea340c72ca57"
 # Read: https://help.github.com/articles/creating-an-access-token-for-command-line-use/
-progress_mark = "LOVE"
+politeness = 1
 def create_connection(token):
     '''
 |  Github ¿¬°á
