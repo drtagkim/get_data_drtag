@@ -268,30 +268,25 @@ def save_repos_data(data,fname):
     w.writerow(['repository_id','repository_fullname','repository_url'])
     w.writerows(rv)
     f.close()
-def acquire_all_repos(my_token,dir_name,page_start=None,page_end=None):
+def acquire_all_repos(my_token,dir_name):
     mygit = create_connection(my_token)
     all_repos = mygit.get_repos()
-    if page_start == None:
-        page_cnt = 0
-    else:
-        page_cnt = page_start
-    if page_end == None:
-        page_end = -1
     rt = mygit.rate_limiting_resettime
-    while 1:
-        stdout.write("%d"%(page_cnt))
+    output = []
+    item_count = 0
+    page_cnt = 1
+    for repo in mygit.get_repos():
+        stdout.write("%d,"%(page_cnt))
         stdout.flush()
-        repo = all_repos.get_page(page_cnt)
-        if len(repo) == 0:
-            break
-        fname = "%s/%010d_git_repo.csv"%(dir_name,page_cnt,)
-        stdout.write(",")
-        stdout.flush()
-        save_repos_data(repo,fname)
-        stdout.write(".")
-        stdout.flush()
-        if page_end >= 0 and page_end == page_cnt:
-            break
+        output.append(repo)
+        item_count += 1
+        if item_count >= 5000:
+            fname = "%s/%010d_git_repo.csv"%(dir_name,page_cnt,)
+            save_repos_data(output,fname)
+            stdout.write(".....writing.....")
+            stdout.flush()
+            output = []
+            item_count = 0
         page_cnt += 1
         if mygit.rate_limiting[0] <= 10:
             diff = rt - time.time() + 10
@@ -304,7 +299,7 @@ def acquire_all_repos(my_token,dir_name,page_start=None,page_end=None):
             diff = rt - time.time()
             if diff <= 0:
                 a = mygit.get_rate_limit()
-                rt = mygit.rate_limiting_resettime
+                rt = mygit.rate_limiting_resettime          
 if __name__ == "__main__":
     '''
 |  전체 리스트를 다 받는다면
@@ -340,13 +335,5 @@ if __name__ == "__main__":
         main(my_token)
     else:
         dir_name = sys.argv[3]
-        if len(sys.argv) == 5:
-            page_start = int(sys.argv[4])
-        elif len(sys.argv) == 6:
-            page_start = int(sys.argv[4])
-            page_end = int(sys.argv[5])
-        else:
-            page_start = None
-            page_end = None
-        acquire_all_repos(my_token,dir_name,page_start=page_start,page_end=page_end)
+        acquire_all_repos(my_token,dir_name)
 # === END OF PROGRAM ===
